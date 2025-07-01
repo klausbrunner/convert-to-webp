@@ -1,0 +1,37 @@
+name: Quarto Extension CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sanity-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Lua and Luacheck etc. 
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.3 lua5.3-dev luarocks yamllint
+          luarocks install luacheck --local
+
+      - name: Add local luarocks to PATH
+        run: echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
+
+      - name: Lint Lua filter
+        run: |
+          luacheck _extensions || echo "Luacheck warnings only (non-blocking)"
+
+      - name: Lint YAML files
+        run: yamllint _extensions
+
+      - name: Install Quarto CLI
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install Extension
+        run: quarto add --no-prompt .
