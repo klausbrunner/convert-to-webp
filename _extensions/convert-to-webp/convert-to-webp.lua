@@ -116,3 +116,9 @@ function Image(img)
 
   return img
 end
+
+-- ensure Meta is processed before Image
+return {
+  { Meta = Meta },
+  { Image = Image }
+}

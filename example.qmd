@@ -1,0 +1,13 @@
+---
+title: Simple PNG to WebP Demo
+format: html
+filters:
+  - convert-to-webp
+webp-delete-originals: true
+---
+
+## Plot something with R
+
+```{r}
+plot(c(1, 2, 3), c(4, 6, 5), main="Sample Plot")
+```
