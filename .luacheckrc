@@ -1,4 +1,4 @@
-std = "lua53"
+std = "lua54"
 
 globals = {
   "quarto",
