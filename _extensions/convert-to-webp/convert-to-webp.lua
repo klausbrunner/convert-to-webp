@@ -11,114 +11,89 @@
     webp-delete-originals: true
 ]]
 
--- Check if file exists
-local function file_exists(path)
-  local f = io.open(path, "r")
-  if f then
-    f:close()
-    return true
-  else
-    return false
-  end
+local Q <const> = quarto
+local log <const> = Q.log
+
+local fileops = require("fileops")
+
+if package.config:sub(1, 1) ~= "/" then
+	log.warning("Non-Unix platform detected, skipping WebP conversion.")
+	return {}
 end
 
--- Check if cwebp is available
-local function cwebp_available()
-  local result = os.execute("cwebp -version > /dev/null 2>&1")
-  return result ~= false and result ~= nil
-end
-
--- Run a shell command and capture its output
-local function run_and_capture(cmd)
-  local handle = io.popen(cmd .. " 2>&1")
-  if not handle then return nil, false end
-  local output = handle:read("*a")
-  local ok, reason, code = handle:close()
-  return output, ok, reason, code
-end
-
--- Get file size in bytes
-local function file_size(path)
-  local f = io.open(path, "rb")
-  if not f then return nil end
-  local size = f:seek("end")
-  f:close()
-  return size
-end
-
--- Initial setup
-local can_convert = cwebp_available()
+local _, can_convert = fileops.run_and_capture("cwebp -version")
 if not can_convert then
-  io.stderr:write("Warning: 'cwebp' not found in PATH. WebP conversion will be skipped.\n")
+	log.warning("'cwebp' not found, skipping WebP conversion.")
+	return {}
 end
 
 local delete_originals = false
-
 function Meta(meta)
-  if meta["webp-delete-originals"] then
-    delete_originals = true
-  end
-  return meta
+	delete_originals = meta["webp-delete-originals"] == true
+	return meta
 end
 
 function Image(img)
-  if not can_convert or not quarto.doc.is_format("html") then
-    return img
-  end
+	if not Q.doc.is_format("html") then
+		return img
+	end
 
-  if img.src:match("%.png$") then
-    local png_path = img.src
-    local webp_path = png_path:gsub("%.png$", ".webp")
+	local src = img.src
+	if not src:match("%.png$") then
+		return img
+	end
 
-    if not file_exists(png_path) then
-      io.stderr:write("Warning: PNG file not found: ", png_path, "\n")
-      return img
-    end
+	local png, webp = src, src:gsub("%.png$", ".webp")
+	if not fileops.file_exists(png) then
+		log.warning("PNG not found: ", png)
+		return img
+	end
 
-    if not file_exists(webp_path) then
-      local png_size = file_size(png_path)
+	local need_conversion = not fileops.file_exists(webp)
+	if not need_conversion then
+		local pm, wm = fileops.get_mtime(png), fileops.get_mtime(webp)
+		if pm and wm and wm < pm then
+			log.info("Reconvert updated image:", png)
+			need_conversion = true
+		end
+	end
 
-      local cmd = string.format(
-        'cwebp -quiet -lossless -z 9 -m 6 "%s" -o "%s"',
-        png_path, webp_path
-      )
-      local output, ok, reason, code = run_and_capture(cmd)
+	if need_conversion then
+		local psz = fileops.file_size(png)
+		local cmd = ("cwebp -quiet -lossless -z 9 -m 6 %s -o %s"):format(fileops.sh_quote(png), fileops.sh_quote(webp))
+		local out, ok = fileops.run_and_capture(cmd)
+		if not ok or not fileops.file_exists(webp) then
+			log.error("cwebp failed for ", png)
+			log.error(out)
+			return img
+		end
 
-      if not ok or not file_exists(webp_path) then
-        io.stderr:write("Error: cwebp failed to convert ", png_path, "\n")
-        io.stderr:write("Reason: ", tostring(reason), " (code ", tostring(code), ")\n")
-        io.stderr:write("Output:\n", output, "\n")
-        return img
-      end
+		local wsz = fileops.file_size(webp)
+		if psz and wsz then
+			local diff = psz - wsz
+			log.info(
+				string.format(
+					"%s → %s: %.1fKB → %.1fKB saved %.1fKB (%.1f%%)",
+					png,
+					webp,
+					psz / 1024,
+					wsz / 1024,
+					diff / 1024,
+					diff / psz * 100
+				)
+			)
+		end
 
-      local webp_size = file_size(webp_path)
-      if png_size and webp_size then
-        local diff = png_size - webp_size
-        local percent = (diff / png_size) * 100
-        io.stdout:write(string.format(
-          "Converted %s → %s (%.1f KB → %.1f KB, saved %.1f KB, -%.1f%%)\n",
-          png_path, webp_path,
-          png_size / 1024, webp_size / 1024,
-          diff / 1024, percent
-        ))
-      end
+		if delete_originals and not os.remove(png) then
+			log.warning("Could not delete PNG: ", png)
+		end
+	end
 
-      if delete_originals then
-        local removed = os.remove(png_path)
-        if not removed then
-          io.stderr:write("Warning: Could not delete original PNG: ", png_path, "\n")
-        end
-      end
-    end
-
-    img.src = webp_path
-  end
-
-  return img
+	img.src = webp
+	return img
 end
 
--- ensure Meta is processed before Image
 return {
-  { Meta = Meta },
-  { Image = Image }
+	{ Meta = Meta },
+	{ Image = Image },
 }

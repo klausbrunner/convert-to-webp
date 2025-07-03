@@ -1,4 +1,4 @@
-name: Quarto Extension CI
+name: CI
 
 on:
   push:
@@ -10,18 +10,27 @@ jobs:
   sanity-check:
     runs-on: ubuntu-latest
 
+    container:
+      image: ghcr.io/rocker-org/devcontainer/tidyverse:4
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Lua and Luacheck etc. 
+      - name: Install necessary packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y lua5.3 lua5.3-dev luarocks yamllint
+          sudo apt-get install -y webp lua5.4 lua5.4-dev luarocks yamllint 
           luarocks install luacheck --local
+          echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
 
-      - name: Add local luarocks to PATH
-        run: echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
+      - name: Download and install Quarto
+        run: |
+          URL="https://github.com/quarto-dev/quarto-cli/releases/download/v1.7.32/quarto-1.7.32-linux-amd64.deb"
+          FILE="/tmp/quarto.deb"
+          curl -fsSL "$URL" -o "$FILE"
+          sudo dpkg -i "$FILE" || (sudo apt-get update && sudo apt-get install -f -y)
+          quarto --version
 
       - name: Lint Lua filter
         run: |
@@ -30,8 +39,17 @@ jobs:
       - name: Lint YAML files
         run: yamllint _extensions
 
-      - name: Install Quarto CLI
-        uses: quarto-dev/quarto-actions/setup@v2
-
-      - name: Install Extension
+      - name: Check if extension can be installed
         run: quarto add --no-prompt .
+
+      - name: Render example.qmd
+        run: quarto render example.qmd
+
+      - name: Check for any .webp output
+        run: find example_files -name '*.webp' -print -quit | grep . 
+
+      - name: Check if HTML references any .webp
+        run: grep -r '\.webp' example.html
+
+      - name: Check for any leftover PNG (should be deleted)
+        run: '! find example_files -name "*.png" | grep .'
