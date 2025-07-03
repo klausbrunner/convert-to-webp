@@ -16,9 +16,15 @@ local log <const> = Q.log
 
 local fileops = require("fileops")
 
-local can_convert <const> = (os.execute("cwebp -version > /dev/null 2>&1") ~= false)
+if package.config:sub(1, 1) ~= "/" then
+	log.warning("Non-Unix platform detected, skipping WebP conversion.")
+	return {}
+end
+
+local _, can_convert = fileops.run_and_capture("cwebp -version")
 if not can_convert then
 	log.warning("'cwebp' not found, skipping WebP conversion.")
+	return {}
 end
 
 local delete_originals = false
@@ -28,7 +34,7 @@ function Meta(meta)
 end
 
 function Image(img)
-	if not (can_convert and Q.doc.is_format("html")) then
+	if not Q.doc.is_format("html") then
 		return img
 	end
 
