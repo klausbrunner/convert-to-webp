@@ -14,7 +14,7 @@
 local Q <const> = quarto
 local log <const> = Q.log
 
-local fileops = require("fileops")
+local fileops <const> = require("fileops")
 
 if package.config:sub(1, 1) ~= "/" then
 	log.warning("Non-Unix platform detected, skipping WebP conversion.")
