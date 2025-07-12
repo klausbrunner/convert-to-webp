@@ -63,7 +63,7 @@ function Image(img)
 
 	if need_conversion then
 		local psz = fileops.file_size(png)
-		local cmd = ("cwebp -quiet -lossless -z 9 -m 6 %s -o %s"):format(fileops.sh_quote(png), fileops.sh_quote(webp))
+		local cmd = ("cwebp -quiet -lossless -z 8 %s -o %s"):format(fileops.sh_quote(png), fileops.sh_quote(webp))
 		local out, ok = fileops.run_and_capture(cmd)
 		if not ok or not fileops.file_exists(webp) then
 			log.error("cwebp failed for ", png)
