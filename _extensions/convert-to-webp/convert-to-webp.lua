@@ -28,13 +28,16 @@ if not can_convert then
 end
 
 local delete_originals = false
+local disable_conversion = false
 function Meta(meta)
 	delete_originals = meta["webp-delete-originals"] == true
+	disable_conversion = meta["webp-disable"] == true
+	log.debug(("delete_originals=%s, disable_conversion=%s"):format(delete_originals, disable_conversion))
 	return meta
 end
 
 function Image(img)
-	if not Q.doc.is_format("html") then
+	if not Q.doc.is_format("html") or disable_conversion then
 		return img
 	end
 

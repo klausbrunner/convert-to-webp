@@ -33,6 +33,12 @@ To also delete the original PNG files after conversion (which makes most sense f
 webp-delete-originals: true
 ```
 
+To disable conversion (typically because you want to exempt a single document from running this filter):
+
+```yaml
+webp-disable: true
+```
+
 ## Requirements
 
 - You need a Unix-like environment (Linux, BSD, macOS, WSL) for this to work.

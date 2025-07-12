@@ -4,6 +4,7 @@ format: html
 filters:
   - convert-to-webp
 webp-delete-originals: true
+webp-disable: false
 ---
 
 ## Plot something with R
