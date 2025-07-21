@@ -42,11 +42,11 @@ function Image(img)
 	end
 
 	local src = img.src
-	if not src:match("%.png$") then
+	if not src:match("%.[Pp][Nn][Gg]$") then
 		return img
 	end
 
-	local png, webp = src, src:gsub("%.png$", ".webp")
+	local png, webp = src, src:gsub("%.[Pp][Nn][Gg]$", ".webp")
 	if not fileops.file_exists(png) then
 		log.warning("PNG not found: ", png)
 		return img
