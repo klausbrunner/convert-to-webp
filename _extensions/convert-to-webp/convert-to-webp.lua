@@ -42,6 +42,10 @@ function Image(img)
 	end
 
 	local src = img.src
+	if src:match("^https?://") or src:match("^data:") then
+		return img
+	end
+
 	if not src:match("%.[Pp][Nn][Gg]$") then
 		return img
 	end
